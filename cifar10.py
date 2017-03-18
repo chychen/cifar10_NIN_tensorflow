@@ -438,8 +438,8 @@ def train(total_loss, global_step):
     #                                 LEARNING_RATE_DECAY_FACTOR,
     #                                 staircase=True)
     lr = tf.train.piecewise_constant(global_step,
-                                     [81 * num_batches_per_epoch,
-                                      122 * num_batches_per_epoch],
+                                     [81 * tf.to_int64(num_batches_per_epoch),
+                                      122 * tf.to_int64(num_batches_per_epoch)],
                                      [INITIAL_LEARNING_RATE,
                                       INITIAL_LEARNING_RATE * LEARNING_RATE_DECAY_FACTOR,
                                       INITIAL_LEARNING_RATE * LEARNING_RATE_DECAY_FACTOR ** 2])
