@@ -64,8 +64,8 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-# NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
-LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
+NUM_EPOCHS_PER_DECAY = 81.0      # Epochs after which learning rate decays.
+LEARNING_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
 MOMENTUM_RATE = 0.9       # MomentumOptimizer
 
@@ -187,7 +187,7 @@ def inputs(eval_data):
     return images, labels
 
 
-def inference(images):
+def inference(images, isTrain=True):
     """Build the CIFAR-10 model.
 
     Args:
@@ -207,13 +207,14 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[5, 5, 3, 192],
-                                             stddev=5e-2,
-                                             wd=0.0)
-        # padding = [[0, 0], [0, 0], [0, 0], [0, 0]]
-        # padded_images = tf.pad(images, padding, mode="CONSTANT")
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[5, 5, 3, 192], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
-        biases = _variable_on_cpu(
-            'biases', [192], tf.constant_initializer(0.0))
+        # biases = _variable_on_cpu(
+        #     'biases', [192], tf.constant_initializer(0.0))
+        biases = tf.Variable(tf.random_normal([192], stddev=0.01, dtype=tf.float32))
         pre_activation = tf.nn.bias_add(conv, biases)
         conv1 = tf.nn.relu(pre_activation, name=scope.name)
         _activation_summary(conv1)
@@ -223,8 +224,10 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 192, 160],
-                                             stddev=5e-2,
-                                             wd=0.0)
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[1, 1, 192, 160], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(conv1, kernel, [1, 1, 1, 1], padding='VALID')
         biases = _variable_on_cpu(
             'biases', [160], tf.constant_initializer(0.0))
@@ -237,8 +240,10 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 160, 96],
-                                             stddev=5e-2,
-                                             wd=0.0)
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[1, 1, 160, 96], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(mlp1_1, kernel, [1, 1, 1, 1], padding='VALID')
         biases = _variable_on_cpu('biases', [96], tf.constant_initializer(0.0))
         pre_activation = tf.nn.bias_add(conv, biases)
@@ -249,7 +254,8 @@ def inference(images):
     pool1 = tf.nn.max_pool(mlp1_2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
                            padding='SAME', name='pool1')
     print ("pool1:: ", pool1)
-    dropout1 = tf.nn.dropout(pool1, 0.5, name='dropout1')
+    if isTrain:
+        pool1 = tf.nn.dropout(pool1, 0.5, name='dropout1')
 
     ## section 2 #############################################################
     # conv2
@@ -257,13 +263,14 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[5, 5, 96, 192],
-                                             stddev=5e-2,
-                                             wd=0.0)
-        # padding = [[0, 0], [0, 0], [0, 0], [0, 0]]
-        # padded_dropout1 = tf.pad(dropout1, padding, mode="CONSTANT")
-        conv = tf.nn.conv2d(dropout1, kernel, [1, 1, 1, 1], padding='SAME')
-        biases = _variable_on_cpu(
-            'biases', [192], tf.constant_initializer(0.0))
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[5, 5, 96, 192], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
+        conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], padding='SAME')
+        # biases = _variable_on_cpu(
+        #     'biases', [192], tf.constant_initializer(0.0))
+        biases = tf.Variable(tf.random_normal([192], stddev=0.01, dtype=tf.float32))
         pre_activation = tf.nn.bias_add(conv, biases)
         conv2 = tf.nn.relu(pre_activation, name=scope.name)
         _activation_summary(conv2)
@@ -273,8 +280,10 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 192, 192],
-                                             stddev=5e-2,
-                                             wd=0.0)
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[1, 1, 192, 192], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(conv2, kernel, [1, 1, 1, 1], padding='VALID')
         biases = _variable_on_cpu(
             'biases', [192], tf.constant_initializer(0.0))
@@ -287,8 +296,10 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 192, 192],
-                                             stddev=5e-2,
-                                             wd=0.0)
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[1, 1, 192, 192], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(mlp2_1, kernel, [1, 1, 1, 1], padding='VALID')
         biases = _variable_on_cpu(
             'biases', [192], tf.constant_initializer(0.0))
@@ -300,7 +311,8 @@ def inference(images):
     pool2 = tf.nn.max_pool(mlp2_2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
                            padding='SAME', name='pool2')
     print ("pool2:: ", pool2)
-    dropout2 = tf.nn.dropout(pool2, 0.5, name='dropout2')
+    if isTrain:
+        pool2 = tf.nn.dropout(pool2, 0.5, name='dropout2')
 
     ## section 3 #############################################################
     # conv3
@@ -308,13 +320,14 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[3, 3, 192, 192],
-                                             stddev=5e-2,
-                                             wd=0.0)
-        # padding = [[0, 0], [0, 0], [0, 0], [0, 0]]
-        # padded_dropout2 = tf.pad(dropout2, padding, mode="CONSTANT")
-        conv = tf.nn.conv2d(dropout2, kernel, [1, 1, 1, 1], padding='SAME')
-        biases = _variable_on_cpu(
-            'biases', [192], tf.constant_initializer(0.0))
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[3, 3, 192, 192], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
+        conv = tf.nn.conv2d(pool2, kernel, [1, 1, 1, 1], padding='SAME')
+        # biases = _variable_on_cpu(
+        #     'biases', [192], tf.constant_initializer(0.0))
+        biases = tf.Variable(tf.random_normal([192], stddev=0.01, dtype=tf.float32))
         pre_activation = tf.nn.bias_add(conv, biases)
         conv3 = tf.nn.relu(pre_activation, name=scope.name)
         _activation_summary(conv3)
@@ -324,8 +337,10 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 192, 192],
-                                             stddev=5e-2,
-                                             wd=0.0)
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[1, 1, 192, 192], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(conv3, kernel, [1, 1, 1, 1], padding='VALID')
         biases = _variable_on_cpu(
             'biases', [192], tf.constant_initializer(0.0))
@@ -338,8 +353,10 @@ def inference(images):
         # filters
         kernel = _variable_with_weight_decay('weights',
                                              shape=[1, 1, 192, NUM_CLASSES],
-                                             stddev=5e-2,
-                                             wd=0.0)
+                                             stddev=0.05,
+                                             wd=0.0001)
+        # initial = tf.random_normal(shape=[1, 1, 192, NUM_CLASSES], stddev=0.05, dtype=tf.float32)
+        # kernel = tf.Variable(initial)
         conv = tf.nn.conv2d(mlp3_1, kernel, [1, 1, 1, 1], padding='VALID')
         biases = _variable_on_cpu('biases', [10], tf.constant_initializer(0.0))
         pre_activation = tf.nn.bias_add(conv, biases)
@@ -363,7 +380,7 @@ def inference(images):
     return flatten_pool
 
 
-def loss(logits, labels):
+def loss(logits, labels, isTrain=True):
     """Add L2Loss to all the trainable variables.
 
     Add summary for "Loss" and "Loss/avg".
@@ -375,16 +392,28 @@ def loss(logits, labels):
     Returns:
       Loss tensor of type float.
     """
-    # Calculate the average cross entropy loss across the batch.
-    labels = tf.cast(labels, tf.int64)
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        labels=labels, logits=logits, name='cross_entropy_per_example')
-    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
-    tf.add_to_collection('losses', cross_entropy_mean)
+    if isTrain == True:
+        # Calculate the average cross entropy loss across the batch.
+        labels = tf.cast(labels, tf.int64)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=labels, logits=logits, name='cross_entropy_per_example')
+        cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+        tf.add_to_collection('losses', cross_entropy_mean)
 
-    # The total loss is defined as the cross entropy loss plus all of the weight
-    # decay terms (L2 loss).
-    return tf.add_n(tf.get_collection('losses'), name='total_loss')
+        # The total loss is defined as the cross entropy loss plus all of the weight
+        # decay terms (L2 loss).
+        return tf.add_n(tf.get_collection('losses'), name='total_loss')
+    else:
+        # Calculate the average cross entropy loss across the batch.
+        labels = tf.cast(labels, tf.int64)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=labels, logits=logits, name='eval_cross_entropy_per_example')
+        cross_entropy_mean = tf.reduce_mean(cross_entropy, name='eval_cross_entropy')
+        tf.add_to_collection('eval_losses', cross_entropy_mean)
+
+        # The total loss is defined as the cross entropy loss plus all of the weight
+        # decay terms (L2 loss).
+        return tf.add_n(tf.get_collection('eval_losses'), name='eval_losses')
 
 
 def _add_loss_summaries(total_loss):
@@ -429,20 +458,20 @@ def train(total_loss, global_step):
     """
     # Variables that affect learning rate.
     num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
-    # decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+    decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
 
     # Decay the learning rate exponentially based on the number of steps.
     # lr = tf.train.exponential_decay(INITIAL_LEARNING_RATE,
     #                                 global_step,
     #                                 decay_steps,
-    #                                 LEARNING_RATE_DECAY_FACTOR,
+    #                                 LEARNING_DECAY_FACTOR,
     #                                 staircase=True)
     lr = tf.train.piecewise_constant(global_step,
                                      [81 * tf.to_int64(num_batches_per_epoch),
                                       122 * tf.to_int64(num_batches_per_epoch)],
-                                     [INITIAL_LEARNING_RATE,
-                                      INITIAL_LEARNING_RATE * LEARNING_RATE_DECAY_FACTOR,
-                                      INITIAL_LEARNING_RATE * LEARNING_RATE_DECAY_FACTOR ** 2])
+                                     [0.100,
+                                      0.010,
+                                      0.001])
     tf.summary.scalar('learning_rate', lr)
 
     # Generate moving averages of all losses and associated summaries.
@@ -451,7 +480,7 @@ def train(total_loss, global_step):
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
         # opt = tf.train.GradientDescentOptimizer(lr)
-        opt = tf.train.MomentumOptimizer(lr, MOMENTUM_RATE)
+        opt = tf.train.MomentumOptimizer(lr, MOMENTUM_RATE, use_nesterov=True)
         grads = opt.compute_gradients(total_loss)
 
     # Apply gradients.

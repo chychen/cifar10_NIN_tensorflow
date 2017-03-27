@@ -23,6 +23,11 @@ import os
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+from tensorflow.python.ops import math_ops
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python.framework import dtypes
+from tensorflow.python.ops import gen_nn_ops
 
 # Process images of this size. Note that this differs from the original CIFAR
 # image size of 32 x 32. If one alters this number, then the entire model
@@ -159,23 +164,37 @@ def distorted_inputs(data_dir, batch_size):
 
     # Read examples from files in the filename queue.
     read_input = read_cifar10(filename_queue)
+    # print ("read_input::", read_input)
     reshaped_image = tf.cast(read_input.uint8image, tf.float32)
-    padding = [[4, 4], [4, 4], [0, 0]]
-    print ("reshaped_image::", reshaped_image)
-    padded_reshaped_image = tf.pad(reshaped_image, padding)
-    print ("padded_reshaped_image::", padded_reshaped_image)
+    # print ("reshaped_image::", reshaped_image)
 
     height = IMAGE_SIZE
     width = IMAGE_SIZE
 
+    # color normalization
+    image = ops.convert_to_tensor(reshaped_image, name='image')
+    num_pixels = math_ops.reduce_prod(array_ops.shape(image))
+
+    image = math_ops.cast(image, dtype=dtypes.float32)
+    image_mean = [125.3, 123.0, 113.9]
+    stddev = [63.0, 62.1, 66.7]
+
+    image = math_ops.subtract(image, image_mean)
+    color_norm_image = math_ops.div(image, stddev)
+
+    padding = [[4, 4], [4, 4], [0, 0]]
+    padded_reshaped_image = tf.pad(color_norm_image, padding)
+    a = tf.reshape(padded_reshaped_image, [1, 40, 40, 3])
+    tf.summary.image('padded_reshaped_image', a)
+
     # Image processing for training the network. Note the many random
     # distortions applied to the image.
 
-    # Randomly crop a [height, width] section of the image.
+    # # Randomly crop a [height, width] section of the image.
     distorted_image = tf.random_crop(padded_reshaped_image, [height, width, 3])
 
     # Randomly flip the image horizontally.
-    distorted_image = tf.image.random_flip_left_right(distorted_image)
+    float_image = tf.image.random_flip_left_right(distorted_image)
 
     # # Because these operations are not commutative, consider randomizing
     # # the order their operation.
@@ -184,8 +203,8 @@ def distorted_inputs(data_dir, batch_size):
     # distorted_image = tf.image.random_contrast(distorted_image,
     #                                            lower=0.2, upper=1.8)
 
-    # Subtract off the mean and divide by the variance of the pixels.
-    float_image = tf.image.per_image_standardization(distorted_image)
+    # # Subtract off the mean and divide by the variance of the pixels.
+    # float_image = tf.image.per_image_standardization(distorted_image)
 
     # Set the shapes of tensors.
     float_image.set_shape([height, width, 3])
@@ -243,8 +262,21 @@ def inputs(eval_data, data_dir, batch_size):
     resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image,
                                                            height, width)
 
-    # Subtract off the mean and divide by the variance of the pixels.
-    float_image = tf.image.per_image_standardization(resized_image)
+    # color nomalization
+    image = ops.convert_to_tensor(resized_image, name='image')
+    num_pixels = math_ops.reduce_prod(array_ops.shape(image))
+
+    image = math_ops.cast(image, dtype=dtypes.float32)
+    image_mean = [125.3, 123.0, 113.9]
+    stddev = [63.0, 62.1, 66.7]
+
+    image = math_ops.subtract(image, image_mean)
+    float_image = math_ops.div(image, stddev)
+    a = tf.reshape(float_image, [1, 32, 32, 3])
+    tf.summary.image('float_image', a)
+
+    # # Subtract off the mean and divide by the variance of the pixels.
+    # float_image = tf.image.per_image_standardization(resized_image)
 
     # Set the shapes of tensors.
     float_image.set_shape([height, width, 3])

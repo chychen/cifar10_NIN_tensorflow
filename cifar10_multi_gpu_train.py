@@ -154,7 +154,7 @@ def train():
     lr = tf.train.exponential_decay(cifar10.INITIAL_LEARNING_RATE,
                                     global_step,
                                     decay_steps,
-                                    cifar10.LEARNING_RATE_DECAY_FACTOR,
+                                    cifar10.LEARNING_DECAY_FACTOR,
                                     staircase=True)
 
     # Create an optimizer that performs gradient descent.
